@@ -464,7 +464,7 @@ Este proyecto fue desarrollado por los siguientes estudiantes del Grado en Ingen
 - [Entrega 1: Distribución del Trabajo](https://docs.google.com/document/d/1K5g5cqhqr7BZ0P4KehW0uqv_OZGyN_cjHm6tFBikYTY/edit?usp=sharing)
 
 **Entrega 2**
-- [Presentación Entrega 2]()
+- [Presentación Entrega 2](https://canva.link/jxwygyxxe87x09o)
 - [Video](https://drive.google.com/file/d/1KXJVRdSskvmzjvz8nhEzWeRgG0YjDoWK/view?usp=sharing)
 - [Memoria Entrega 2](https://docs.google.com/document/d/1BeDUwpIIZ76oQSTDzrjcvYsROVYALI4uF1sLKIetDtw/edit?usp=sharing)
 - [Entrega 2: Distribución del Trabajo](https://docs.google.com/document/d/19Q7bwqnLdEIqhRjMFr6UOWoBgs1nh_71DfUrqB43VlE/edit?usp=sharing)
