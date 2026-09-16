@@ -1,473 +1,717 @@
-# MacBrides
+
+
+# NYC Mobility Demand Analysis
 
 <p align="center">
   <img src="docs/images/dashboard.png" width="700"/>
 </p>
 
-## Descripción
+Large-scale **data engineering and machine learning project** focused on analyzing New York City taxi and for-hire vehicle mobility using tens of millions of trip records.
 
-Proyecto de **Proyecto de Datos II (UCM, 2025/26)**.  
-El objetivo es **analizar el sistema de transporte de pago en Nueva York** (taxis/VTC) e incorporar fuentes externas (meteorología y eventos) para:
+The system integrates **NYC TLC transportation data** with external sources including **weather, urban events and geographic information** to analyze mobility patterns, identify high-demand areas and build predictive models.
 
-- Entender patrones de demanda (zonas/horas)
-- Detectar tensiones del sistema (picos, desigualdad, variabilidad…)
-- Proponer una **aplicación basada en datos** con impacto medible
-- Respaldar la propuesta con visualizaciones y estudio de mercado 
+The project covers the complete data workflow: from raw data extraction and distributed processing with **Apache Spark**, to machine learning, a **FastAPI REST API** and an interactive **React dashboard**.
+
+![NYC Mobility Dashboard](docs/images/dashboard.png)
 
 ---
 
-### Componentes principales
+## Key Features
 
-- **Backend analítico**: Pipeline de datos escalable con PySpark para procesar decenas de millones de viajes
-- **Modelos de machine learning**: Predicción de demanda máxima por zona, estimación de propinas y análisis de estrés urbano
-- **Aplicación web**: Dashboard interactivo para visualización de patrones y toma de decisiones
-- **Arquitectura por capas**: Procesamiento estructurado desde datos crudos hasta insights finales
-
-### Impacto esperado
-
-- **Para operadores de transporte**: Optimización de flotas y precios dinámicos
-- **Para ciudad**: Mejor comprensión de la movilidad urbana y planificación de infraestructuras
-- **Para usuarios**: Mejora en la experiencia de viaje mediante predicciones precisas
+- Processing of **tens of millions of NYC taxi and for-hire vehicle trips** with PySpark
+- Multi-layer pipeline for data exploration, validation, standardization and aggregation
+- Integration of heterogeneous transportation, weather, event and geographic datasets
+- Feature engineering for temporal and geographic mobility analysis
+- Machine learning models for demand prediction, tip estimation and urban mobility analysis
+- REST API built with **FastAPI**
+- Interactive dashboard built with **React**
+- Object storage and data management through **MinIO**
 
 ---
 
-### Funcionalidades
+## Data Sources
 
-- **Extracción** de fuentes reales:
-  - TLC (viajes taxi / VTC)
-  - **Meteorología** (Open-Meteo)
-  - **Eventos** (NYC Open Data)
+The project integrates several real-world datasets.
 
-- **Pipeline por capas**:
-  - `Capa 0` (exploración y muestreo inicial de los datos raw de TLC para estimar volumen, precio medio, hora pico y estructura por servicio y mes, generando un resumen exportable)
-  - `Capa 1` (control de calidad estructural sobre los datos en bruto (raw), usando como referencia los Data Dictionaries oficiales de TLC)
-  - `Capa 2` (limpieza + estandarización)
-  - `Capa 3` (agregación lista para análisis y cruces)
+### NYC Taxi & Limousine Commission
 
-- **Modelos de machine learning**:
-  - Predicción de zona de máxima demanda (clasificación multiclase)
-  - Estimación de propinas (regresión)
-  - Modelado de estrés urbano y patrones de demanda
+Trip records from:
 
-- **Aplicación web interactiva**:
-  - Dashboard con mapas y series temporales
-  - Visualización de demanda, precios y variables externas
-  - Consumo de datos y predicciones a través de API REST
+- Yellow Taxi
+- Green Taxi
+- High Volume For-Hire Vehicles (FHVHV)
 
-- **Visualizaciones analíticas**:
-  - Análisis exploratorio de datos
-  - Cruces entre viajes, meteorología y eventos
-  - Generación de gráficos para justificar la propuesta
+The datasets contain information such as:
+
+- Pickup and drop-off timestamps
+- Pickup and drop-off zones
+- Trip distance
+- Fare information
+- Tips
+- Passenger information
+- Service type
+
+### Weather
+
+Hourly meteorological information obtained through the **Open-Meteo API**.
+
+Weather variables are combined with transportation data to analyze their relationship with mobility demand.
+
+### Urban Events
+
+Event data obtained from **NYC Open Data** is incorporated to study the relationship between urban activity and transportation patterns.
+
+### Geographic & External Data
+
+NYC TLC taxi-zone information is used to associate trips with:
+
+- Boroughs
+- Taxi zones
+- Geographic areas
+
+Additional external information, including restaurant and rental-related data, is incorporated during the enrichment and aggregation stages.
 
 ---
 
-## Estructura general del repositorio
+# Data Pipeline
+
+The project implements a layered data architecture that transforms raw data into validated, standardized and ML-ready datasets.
+
+```text
+External Data Sources
+        │
+        ▼
+Raw Data
+        │
+        ▼
+Layer 0 — Exploration
+        │
+        ▼
+Layer 1 — Validation
+        │
+        ▼
+Layer 2 — Standardization
+        │
+        ▼
+Layer 3 — Aggregation & Feature Engineering
+        │
+        ▼
+Machine Learning
+        │
+        ├──► FastAPI Backend
+        │
+        └──► React Dashboard
 ```
-Grupo-PD2---Transporte-NYC/
+
+---
+
+## Layer 0 — Exploration
+
+The first stage performs exploratory analysis over raw NYC TLC data to estimate the scale and characteristics of the datasets.
+
+It analyzes:
+
+- Dataset volume
+- Average trip prices
+- Peak demand periods
+- Distribution by transportation service
+- Monthly patterns
+- Dataset structure
+
+The resulting summaries provide an initial overview before executing the complete processing pipeline.
+
+---
+
+## Layer 1 — Validation & Data Quality
+
+The first processing layer performs structural and logical validation based on the official **NYC TLC Data Dictionaries**.
+
+Validation includes:
+
+- Data-type verification
+- Allowed-domain validation
+- Detection of future dates
+- Detection of negative trip durations
+- Plausibility checks
+- Derived-speed validation
+- Identification of malformed records
+
+Records are separated into:
+
+```text
+clean/
+bad_rows/
+```
+
+The pipeline also generates JSON validation reports.
+
+---
+
+## Layer 2 — Standardization
+
+Different transportation services use different schemas.
+
+This layer transforms them into a common representation.
+
+Main operations include:
+
+- Timestamp normalization
+- Price-column normalization
+- Schema unification
+- Service-type identification
+- Trip-duration calculation
+- Weekday extraction
+- Geographic enrichment
+- TLC zone integration
+
+The resulting datasets are stored in **Parquet** format and partitioned by:
+
+```text
+year / month / service
+```
+
+---
+
+## Layer 3 — Aggregation & Feature Engineering
+
+The final processing layer generates datasets ready for analytics, visualization and machine learning.
+
+Generated information includes:
+
+- Daily transportation demand
+- Zone-hour mobility hotspots
+- Price variability
+- Geographic demand patterns
+- Temporal mobility indicators
+
+Transportation data is enriched with external sources including:
+
+- Weather
+- Events
+- Geographic information
+- Rental-related data
+- Restaurant information
+
+Additional features include:
+
+- Temporal variables
+- Lag features
+- Rolling means
+- External contextual variables
+
+The output consists of partitioned datasets designed for downstream modeling and visualization.
+
+---
+
+# Machine Learning
+
+The project includes several predictive and analytical tasks.
+
+## Demand Prediction
+
+A multiclass classification problem is used to predict the geographic zone expected to experience the highest transportation demand during the following time period.
+
+---
+
+## Tip Prediction
+
+Regression models are used to estimate tip amounts using trip-related information.
+
+---
+
+## Mobility Pattern Analysis
+
+Additional models and analyses explore relationships between transportation demand and variables such as:
+
+- Time of day
+- Geographic area
+- Purchasing power
+- Weather
+- Urban events
+
+---
+
+## Urban Stress Analysis
+
+Additional indicators and models are used to analyze transportation pressure and demand patterns across New York City.
+
+---
+
+# Web Application
+
+The processed data and model outputs are exposed through an interactive web application.
+
+## Backend
+
+The backend is implemented with **FastAPI** and provides REST endpoints for:
+
+- Processed mobility data
+- Aggregated indicators
+- Model predictions
+- Dashboard information
+
+Health endpoint:
+
+```text
+http://127.0.0.1:8000/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+---
+
+## Frontend
+
+The frontend is implemented using:
+
+- React
+- Vite
+- Leaflet / Folium
+- Recharts
+
+The dashboard includes:
+
+- Interactive maps
+- Demand visualization
+- Temporal trends
+- Price information
+- Geographic mobility patterns
+- External contextual variables
+
+---
+
+# Repository Structure
+
+```text
+nyc-mobility-demand-analysis/
+│
 ├── src/
-│ ├── extraccion/          ← Extracción de datos desde APIs y fuentes externas
-│ │ └── main.py                     ← Orquestador de extracción
-│ ├── procesamiento/       ← Pipeline de limpieza y transformación
-│ │ ├── capa1/             ← Validación estructural por servicio
-│ │ ├── capa2/             ← Estandarización y normalización
-│ │ └── capa3/             ← Agregaciones y datasets ML-ready
-│ ├── ml/                  ← Modelos de machine learning
-│ │ ├── models_ej1/        ← Modelos para ejercicios 1a-1d
-│ │ └── models_ej2/        ← Modelos para ejercicio 2
-│ └── visualizaciones/     ← Análisis exploratorio y gráficos
-├── backend/               ← API REST con FastAPI
-│ └── app/
-├── frontend/              ← Aplicación web React + Vite
-├── config/                ← Configuración centralizada
-├── data/                  ← Datos organizados por capas
-│ ├── raw/                 ← Datos originales descargados
-│ ├── validated/           ← Datos validados (capa 1)
-│ ├── standarized/         ← Datos estandarizados (capa 2)
-│ ├── aggregated/          ← Agregados para análisis (capa 3)
-│ └── external/            ← Datos externos (meteo, eventos)
-├── docs/                  ← Documentación detallada
-├── notebooks/             ← Jupyter notebooks para análisis
-├── outputs/               ← Resultados de modelos y visualizaciones
-├── pyproject.toml         ← Dependencias Python (uv)
-├── package.json           ← Scripts de proyecto
-├── uv.lock                ← Lockfile de dependencias
-└── README.md              ← Este documento
+│   ├── extraccion/
+│   │   └── main.py
+│   │
+│   ├── procesamiento/
+│   │   ├── capa1/
+│   │   ├── capa2/
+│   │   └── capa3/
+│   │
+│   ├── ml/
+│   │   ├── models_ej1/
+│   │   └── models_ej2/
+│   │
+│   ├── visualizaciones/
+│   │
+│   └── main.py
+│
+├── backend/
+│   └── app/
+│
+├── frontend/
+│
+├── config/
+│
+├── data/
+│   ├── raw/
+│   ├── validated/
+│   ├── standarized/
+│   ├── aggregated/
+│   └── external/
+│
+├── docs/
+│   └── images/
+│
+├── notebooks/
+│
+├── outputs/
+│
+├── pyproject.toml
+├── package.json
+├── uv.lock
+└── README.md
+```
+
+The main orchestrator is:
+
+```text
+src/main.py
+```
+
+It sequentially executes:
+
+```text
+Data extraction
+      ↓
+Layer 1 validation
+      ↓
+Layer 2 standardization
+      ↓
+Layer 3 aggregation
+      ↓
+Machine learning
 ```
 
 ---
 
-- Archivo __`src/main.py`__: Script orquestador principal del proyecto. Ejecuta de forma secuencial el pipeline completo: extracción de datos (TLC, meteorología, eventos), procesamiento por capas (capa1 → capa2 → capa3) y entrenamiento de modelos de machine learning. Permite ejecutar todo el proyecto desde datos externos hasta modelos entrenados mediante un único comando.
+# Tech Stack
+
+## Data Engineering
+
+- Python 3.11+
+- Apache Spark / PySpark
+- Pandas
+- PyArrow
+- DuckDB
+- Parquet
+- MinIO
+
+## Machine Learning
+
+- Scikit-learn
+- XGBoost
+- PyTorch
+
+## Geospatial Analysis
+
+- GeoPandas
+- NYC TLC geographic zones
+
+## Backend
+
+- FastAPI
+- Uvicorn
+
+## Frontend
+
+- React
+- Vite
+- Leaflet
+- Recharts
+
+## Visualization
+
+- Matplotlib
+- Seaborn
+- Folium
+- Jupyter Notebook
+
+## Development Tools
+
+- Git
+- GitHub
+- `uv`
+- Rich
+- VS Code
 
 ---
 
-## Flujo de datos (pipeline completo)
+# Installation
 
-El proyecto implementa un pipeline de datos estructurado en capas que transforma datos crudos en insights accionables:
+## 1. Clone the Repository
 
-### Capa 1: Validación y limpieza
-- **Objetivo**: Control de calidad estructural usando Data Dictionaries oficiales de TLC
-- **Procesamiento**: 
-  - Validación de tipos de datos y dominios permitidos
-  - Detección de errores temporales (fechas futuras, duración negativa)
-  - Cálculo de velocidad implícita y filtros de plausibilidad
-- **Salida**: Datos validados separados en `clean` y `bad_rows`, con reports JSON
-
-### Capa 2: Estandarización
-- **Objetivo**: Unificación de esquemas entre servicios (yellow, green, fhvhv)
-- **Procesamiento**:
-  - Normalización de timestamps y columnas de precio
-  - Cálculo de variables derivadas (duración, día de semana, etc.)
-  - Enriquecimiento con zonas TLC (borough y zone)
-- **Salida**: Datos estandarizados en Parquet particionado por año/mes/servicio
-
-### Capa 3: Agregación y datasets ML-ready
-- **Objetivo**: Generación de agregados para análisis y construcción de datasets para modelos
-- **Procesamiento**:
-  - Agregados base: demanda diaria, hotspots zona-hora, variabilidad de precios
-  - Enriquecimiento con datos externos (meteorología, eventos, alquileres, restaurantes)
-  - Construcción de features para ML (lags, rolling means, variables externas)
-- **Salida**: Datasets particionados listos para modelado y visualización
-
-### Modelos de Machine Learning
-- **Ejercicio 1a**: Clasificación multiclase para predecir zona de máxima demanda en la siguiente hora
-- **Ejercicio 1b**: Regresión para predecir monto de propina usando solo información a priori
-- **Ejercicio 1c-1d**: Análisis de patrones de demanda y poder adquisitivo
-- **Ejercicio 2**: Modelos para dashboard de estrés urbano
-
-### Visualizaciones y aplicación web
-- **Backend**: API REST con FastAPI para servir datos y predicciones
-- **Frontend**: Dashboard React con mapas interactivos y gráficos de tendencias
-- **Visualizaciones**: Heatmaps, series temporales, análisis comparativos
+```bash
+git clone https://github.com/IgRam23/nyc-mobility-demand-analysis.git
+cd nyc-mobility-demand-analysis
+```
 
 ---
 
-## Tecnologías utilizadas
+## 2. Install Python Dependencies
 
-### Lenguajes y frameworks principales
-- **Python 3.11+**: Lenguaje principal para todo el pipeline de datos y ML
-- **PySpark 4.1+**: Procesamiento distribuido de big data (decenas de millones de filas)
-- **FastAPI**: Framework para API REST del backend
-- **React 19**: Framework JavaScript para el frontend
-- **Vite**: Build tool para desarrollo rápido del frontend
+Install `uv` if necessary:
 
-### Librerías de datos y ML
-- **Pandas/PyArrow**: Manipulación de datos tabulares y lectura de Parquet
-- **DuckDB**: Consultas SQL analíticas sobre datos locales
-- **Scikit-learn**: Modelos de ML tradicionales (regresión, clasificación)
-- **XGBoost**: Gradient boosting para problemas de clasificación/regresión
-- **PyTorch**: Deep learning (redes neuronales para ejercicio 2)
-- **GeoPandas**: Análisis geoespacial y mapas
-
-### Visualización y UI
-- **Matplotlib/Seaborn**: Gráficos estáticos para análisis exploratorio
-- **Folium/Leaflet**: Mapas interactivos en el dashboard
-- **Recharts**: Gráficos interactivos en React
-- **Jupyter**: Notebooks para experimentación y documentación
-
-### Infraestructura y herramientas
-- **uv**: Gestor moderno de dependencias Python (reemplaza pip/venv)
-- **MinIO**: Object storage para datos (S3-compatible)
-- **Git**: Control de versiones
-- **Rich**: CLI con barras de progreso y formato coloreado
-
-### Fuentes de datos
-- **TLC Trip Records**: Viajes de taxis/VTC en formato Parquet desde AWS S3
-- **Open-Meteo API**: Datos meteorológicos horarios
-- **NYC Open Data**: Eventos urbanos y datos socioeconómicos
-- **Zonificación TLC**: Catálogo oficial de zonas de taxi en NYC
-
-### Entorno de desarrollo
-- **Java 17**: Requerido para PySpark
-- **VS Code**: IDE recomendado con extensiones Python y Jupyter
-- **Linux/macOS/Windows**: Soportado (con configuraciones específicas para Spark)
-
----
-
-## Instalación del entorno
-
-Pasos necesarios para instalar el proyecto. Descripción paso a paso de cómo poner en funcionamiento el entorno de desarrollo.
-
-----
-
-**1.** Clonar el repositorio:  
-
-```
-git clone https://github.com/maritriv/Grupo-PD2---Transporte-NYC.git
-cd Grupo-PD2---Transporte-NYC
+```bash
+pip install uv
 ```
 
-----
+Then create the environment and install the dependencies:
 
-**2.** Descarga las librerías necesarias creando automáticamente un entorno virtual con `uv sync` (desde la ubicación del `pyproject.toml`):
-Instala uv (si no lo tienes instalado):
-```
-   pip install uv
-```
-
-```
+```bash
 uv sync
 ```
 
-**⚠️ Configuración necesaria para Spark**
-Este proyecto utiliza **PySpark** para las visualizaciones y agregaciones. Es necesario tener Java 17 (JDK) correctamente configurado.
+---
 
-**2.1. Instalar Java 17**
+# Spark Configuration
 
-Si no tienes Java 17 instalado, accede a este enlace y descarga Temurin 17 (JDK).
+The project uses **PySpark** and therefore requires **Java 17**.
 
-[Enlace a Temurin 17](https://adoptium.net/es)
+Verify the Java installation:
 
-Verifica la instalación:
-```
+```bash
 java -version
 ```
 
-Debe mostrar algo similar a:
-```
+The output should contain something similar to:
+
+```text
 openjdk version "17.x.x"
 ```
-**2.2. Configurar las variables de entorno**
 
-🪟 En Windows (PowerShell):
-```
+## Windows
+
+Configure Java:
+
+```powershell
 $env:JAVA_HOME="C:\Program Files\Eclipse Adoptium\jdk-17.x.x"
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
 $env:PYSPARK_PYTHON="python"
 $env:PYSPARK_DRIVER_PYTHON="python"
 ```
 
-🐧 En macOS / Linux:
-Añadir al .zshrc o .bashrc:
-```
-export JAVA_HOME=$(/usr/libexec/java_home -v 17)
-export PATH=$JAVA_HOME/bin:$PATH
-export PYSPARK_PYTHON=python3
-export PYSPARK_DRIVER_PYTHON=python3
-```
-Aplicar cambios:
-```
-source ~/.zshrc
+Spark on Windows may also require:
+
+```text
+winutils.exe
+hadoop.dll
 ```
 
-**2.3**. Configurar Hadoop (obligatorio en Windows)
+These files can be placed in:
 
-Spark en Windows necesita `winutils.exe` y `hadoop.dll`.
+```text
+C:\hadoop\bin\
+```
 
-Crea la estructura: `C:\hadoop\bin\`
+Configure Hadoop:
 
-Para descargar los archivos necesarios puedes obtenerlos desde repositorios compatibles con tu versión de Hadoop/Spark (por ejemplo Hadoop 3.x).
-
-[Repositorio recomendado](https://github.com/cdarlint/winutils)
-
-Este repositorio incluye tanto el archivo `winutils.exe`como el archivo `hadoop.dll`
-
-Una vez descargados, copia ambos archivos dentro de: `C:\hadoop\bin\`
-
-**2.4** Configurar variables de Hadoop
-
-Ejecuta:
-```bash
+```powershell
 $env:HADOOP_HOME="C:\hadoop"
 $env:PATH="C:\hadoop\bin;$env:PATH"
 ```
 
-Verifica la instalación con:
-```bash
+Verify:
+
+```powershell
 Get-Command winutils.exe
 Get-Command hadoop.dll
 ```
 
-Debe devolver:
-```bash
-C:\hadoop\bin\winutils.exe
-C:\hadoop\bin\hadoop.dll
-```
+---
 
-----
-**3. Descargar los datos**
+# Downloading the Data
 
-Los datos del proyecto se almacenan en **MinIO** (object storage).
+Project data is stored using **MinIO object storage**.
 
-Para descargarlos y mantener la estructura de directorios original, ejecuta:
+To download the data while preserving the directory structure:
 
 ```bash
 uv run -m src.extraccion.download_from_minio
 ```
 
-Por defecto:
-
-- Descarga todo el contenido bajo data/
-
-- Mantiene la misma estructura de carpetas
-
-- Omite archivos que ya existen localmente
-
-Opciones útiles:
+Download a specific directory:
 
 ```bash
-# Descargar solo una subcarpeta
 uv run -m src.extraccion.download_from_minio --prefix data/raw/
+```
 
-# Descargar en un directorio específico
-uv run -m src.extraccion.download_from_minio --dest-dir /ruta/destino
+Specify a destination:
 
-# Forzar descarga (sobrescribir existentes)
+```bash
+uv run -m src.extraccion.download_from_minio --dest-dir /path/to/destination
+```
+
+Force existing files to be overwritten:
+
+```bash
 uv run -m src.extraccion.download_from_minio --no-skip
 ```
 
-> Es necesario que el archivo `credentials.json` esté configurado en la raíz del proyecto antes de ejecutar la descarga.
+A valid local `credentials.json` file is required to access the object storage.
 
-## Ejecución del pipeline completo
+---
 
-Para ejecutar todo el proyecto (extracción + procesamiento + modelos):
+# Running the Pipeline
+
+Run the complete workflow:
 
 ```bash
 uv run -m src.main
 ```
-Esto ejecuta:
 
-- Extracción de datos (TLC, meteorología, eventos)
-- Procesamiento por capas (capa1 → capa2 → capa3)
-- Entrenamiento de modelos de machine learning
+This executes:
 
-Si quieres ejecutar por partes el pipeline:
+- Data extraction
+- Layer 1 validation
+- Layer 2 standardization
+- Layer 3 aggregation
+- Machine learning models
 
-### Ejecutar la extracción de datos:
+Each component can also be executed independently.
+
+---
+
+## Data Extraction
+
 ```bash
 uv run -m src.extraccion.main
 ```
 
-### Ejecutar procesamiento por capas
+---
 
-Capa 1 — Validación:
+## Layer 1 — Validation
+
 ```bash
 uv run -m src.procesamiento.capa1.main
 ```
 
-Capa 2 — Estandarización
+---
+
+## Layer 2 — Standardization
+
 ```bash
 uv run -m src.procesamiento.capa2.main
 ```
 
-Capa 3 — Agregación
+---
+
+## Layer 3 — Aggregation
+
 ```bash
 uv run -m src.procesamiento.capa3.main
 ```
 
-o si deseas ejecutar las tres capas seguidas:
+Run all processing layers:
+
 ```bash
 uv run -m src.procesamiento.main
 ```
 
-### Ejecutar visualizaciones del análisis previo
+---
+
+## Exploratory Visualizations
+
 ```bash
 uv run -m src.visualizaciones.main
 ```
 
-### Ejecutar modelos de Machine Learning
+---
 
-Modelos del ejercicio 1:
+## Machine Learning Models
+
+Exercise 1 models:
+
 ```bash
 uv run -m src.ml.models_ej1.main
 ```
 
-Modelos del ejercicio 2:
+Exercise 2 models:
+
 ```bash
 uv run -m src.ml.models_ej2.main
 ```
 
-## Ejecución de la página web
-Este proyecto puede ejecutarse de varias formas, dependiendo de si quieres levantar `backend` y `frontend` por separado o todo a la vez.
+---
 
-### Opción 1: Ejecución manual
-**1. Levantar el backend**
+# Running the Web Application
 
-Abre una terminal en la raíz del proyecto y ejecuta:
+## Backend
+
+From the project root:
+
 ```bash
 uv run -m uvicorn backend.app.main:app --reload
 ```
 
-Si todo va bien, verás algo como:
-```bash
-Uvicorn running on http://127.0.0.1:8000
+The backend runs by default at:
+
+```text
+http://127.0.0.1:8000
 ```
 
-Puedes comprobar que funciona abriendo:
-```bash 
-http://127.0.0.1:8000/api/health
-```
+---
 
-Debería devolver: `{"status":"ok"}`
+## Frontend
 
+Open another terminal:
 
-**2. Levantar el frontend**
-
-En otra terminal:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-Vite te mostrará una URL, normalmente:
-```bash
+Vite normally starts the frontend at:
+
+```text
 http://localhost:5173
 ```
-Abre esa dirección en el navegador.
 
-### Opción 2: Instalación completa del proyecto
+---
 
-Si es la primera vez que clonas el proyecto, puedes instalar todo de una vez:
+## Backend + Frontend
+
+Install the complete project:
+
 ```bash
 npm run setup
 ```
-Esto ejecuta:
 
-- Instalación del backend (dependencias Python)
-- Instalación del frontend (npm)
+Start both services:
 
-Puedes levantar backend + frontend automáticamente con un solo comando:
 ```bash
 npm run dev
 ```
-Esto usa `concurrently` y ejecuta:
 
-- Backend: `uvicorn`
-- Frontend: `vite`
+Available scripts:
 
-Verás ambos logs en la misma terminal.
-
-### Scripts disponibles
-Desde la raíz del proyecto:
 ```bash
-npm run setup        # Instala todo el proyecto
-npm run dev          # Ejecuta backend + frontend juntos
-npm run dev:backend  # Solo backend
-npm run dev:frontend # Solo frontend
+npm run setup
+npm run dev
+npm run dev:backend
+npm run dev:frontend
 ```
---- 
 
-## Equipo de desarrollo
+---
 
-Este proyecto fue desarrollado por los siguientes estudiantes del Grado en Ingeniería de Datos e Inteligencia Artificial (UCM): 
+# Project Materials
+
+Additional documentation and presentation material produced during the project.
+
+## Final Delivery
+
+- [Final Report](https://docs.google.com/document/d/1BeDUwpIIZ76oQSTDzrjcvYsROVYALI4uF1sLKIetDtw/edit?usp=sharing)
+- [Final Presentation](https://canva.link/jxwygyxxe87x09o)
+- [Project Demo Video](https://drive.google.com/file/d/1KXJVRdSskvmzjvz8nhEzWeRgG0YjDoWK/view?usp=sharing)
+
+## First Delivery
+
+- [First Report](https://docs.google.com/document/d/1znwca7mk1cS6DRcjjuXsSMnBJvdzIXBFVLbBbsAFyls/edit?usp=sharing)
+- [First Presentation](https://docs.google.com/presentation/d/1tKNixIGUhMHiNGJyOn6zXNW0MvKN4t1Iz4JFZ0_KaAE/edit?slide=id.g3c872e10c63_0_294#slide=id.g3c872e10c63_0_294)
+
+## Additional Visualizations
+
+- [Visualization Repository](https://drive.google.com/drive/folders/1gWM-5GU0OTZgczfwt1Mxz7wQFQUuLo5Z?usp=drive_link)
+
+---
+
+# Academic Context
+
+This project was developed during the **2025/26 Proyecto de Datos II** course within the:
+
+**B.Sc. in Data Engineering and Artificial Intelligence**  
+Facultad de Informática  
+Universidad Complutense de Madrid
+
+The project was developed by **Team MacBrides**:
+
 - Vega García Camacho
-- Rosa Gómez-Gil Jónsdóttir 
+- Rosa Gómez-Gil Jónsdóttir
 - Daniel Higueras Llorente
 - Ignacio Ramírez Suárez
 - Marina Triviño de las Heras
 
-##  Recursos adicionales
-### Memorias y presentaciones
-**Entrega 1**
-- [Presentación Entrega 1](https://docs.google.com/presentation/d/1tKNixIGUhMHiNGJyOn6zXNW0MvKN4t1Iz4JFZ0_KaAE/edit?slide=id.g3c872e10c63_0_294#slide=id.g3c872e10c63_0_294)
-- [Memoria Entrega 1](https://docs.google.com/document/d/1znwca7mk1cS6DRcjjuXsSMnBJvdzIXBFVLbBbsAFyls/edit?usp=sharing)
-- [Entrega 1: Distribución del Trabajo](https://docs.google.com/document/d/1K5g5cqhqr7BZ0P4KehW0uqv_OZGyN_cjHm6tFBikYTY/edit?usp=sharing)
+---
 
-**Entrega 2**
-- [Presentación Entrega 2](https://canva.link/jxwygyxxe87x09o)
-- [Video](https://drive.google.com/file/d/1KXJVRdSskvmzjvz8nhEzWeRgG0YjDoWK/view?usp=sharing)
-- [Memoria Entrega 2](https://docs.google.com/document/d/1BeDUwpIIZ76oQSTDzrjcvYsROVYALI4uF1sLKIetDtw/edit?usp=sharing)
-- [Entrega 2: Distribución del Trabajo](https://docs.google.com/document/d/19Q7bwqnLdEIqhRjMFr6UOWoBgs1nh_71DfUrqB43VlE/edit?usp=sharing)
+# Repository Purpose
 
-### Visualizaciones
-- [Google drive](https://drive.google.com/drive/folders/1gWM-5GU0OTZgczfwt1Mxz7wQFQUuLo5Z?usp=drive_link)
+This repository is maintained as part of my **Data Engineering and Artificial Intelligence portfolio** and showcases an end-to-end data project covering:
+
+- Large-scale distributed data processing
+- Data validation and standardization
+- Multi-source data integration
+- Feature engineering
+- Machine learning
+- REST API development
+- Interactive data visualization
