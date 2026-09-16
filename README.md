@@ -2,10 +2,6 @@
 
 # NYC Mobility Demand Analysis
 
-<p align="center">
-  <img src="docs/images/dashboard.png" width="700"/>
-</p>
-
 Large-scale **data engineering and machine learning project** focused on analyzing New York City taxi and for-hire vehicle mobility using tens of millions of trip records.
 
 The system integrates **NYC TLC transportation data** with external sources including **weather, urban events and geographic information** to analyze mobility patterns, identify high-demand areas and build predictive models.
